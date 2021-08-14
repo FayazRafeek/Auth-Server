@@ -1,4 +1,4 @@
-POST http://localhost:3000/auth/login 
+GET http://localhost:8000/awsTest
 Content-Type: application/json
 
 {

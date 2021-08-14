@@ -1,7 +1,7 @@
 require('dotenv').config()
 const express = require('express')
 const router = express.Router()
-const { getUser } = require('../Db/DbActions')
+const DB = require('../Db/DbActions')
 
 //PARSE
 var bodyParser = require('body-parser');
@@ -10,36 +10,36 @@ router.use(bodyParser.json());
 
 // ENCRYPTION
 var jwt = require('jsonwebtoken');
-const User = require('../Models/User');
-
-
 
 //Register User
 router.post('/register', async (req,res,next) => {
 
     try {
 
+        //Catch Request Data
         const {fName,lName, email, password} = req.body
-
         let user = {}
         user.fName = fName;
         user.lName = lName;
         user.email = email
         user.password = password
 
-        let userExist = await getUser(email)
-
-        console.log(userExist);
-
-        if(userExist && userExist.email !== null)
+        //Check User Exist
+        let dbResp = await DB.getUser(email)
+        if(dbResp.status)
             res.send({status : false, message : 'User Already Exists', errorCode : 100})
         else {
+            //Add user to Db
+            console.log('Adding User...');
+            const addResp = await DB.addUser(user)
+            if(addResp.status){
+                //return Token
+                var token = jwt.sign({ id: addResp.userId }, process.env.TOKEN_SECRET);
+                res.send({status : true, token : token})
+            } else {
+                res.send({status : false, message : 'failed to Add user', errorCode : 333})
+            }
 
-            let userModel = new User(user)
-            const id = userModel.save()
-            var token = jwt.sign({ id: id }, process.env.TOKEN_SECRET);
-
-            res.send({status : true, token : token})
         }
 
     } finally {
@@ -54,22 +54,25 @@ router.post('/login', async(req,res,next) => {
     const reqPassword = req.body.password
 
     //Check User Exists
-    let userFetched = await getUser(email)
+    let dbResp = await DB.getUser(email)
 
-    if(userFetched && userFetched.email != null){
+    if(dbResp.status){
 
-        const {id, password} = userFetched
+        userId = dbResp.item.userId
+        password = dbResp.item.password
+
         if(reqPassword === password){
-            //Return Token
-            var token = jwt.sign({ id: id }, process.env.TOKEN_SECRET);
-            res.send({status: true, token : token})
-        }
-        else{
-            res.send({status : false, message : 'Incorrect Password', errorCode : 102})
-        }
+            var token = jwt.sign({ id: userId }, process.env.TOKEN_SECRET);
+            res.send({status : true, token : token})
+        } else 
+            res.send({status : false, message: 'Invalid Password', errorCode : 100})
     } else {
-        res.send({status : false, message : 'No User Found', errorCode : 101})
+        if(dbResp.errorCode === 303)
+            res.send({status : false, message: 'No User found! Try register', errorCode : 303})
+        else
+            res.send({status : false, message: 'Fetch Error hee', errorCode : 300})
     }
+    
 
 
 })
