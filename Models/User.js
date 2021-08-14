@@ -1,7 +1,11 @@
-const mongoose = require('mongoose')
+const mongoose = require('mongoose').set('debug', true);
 
 const userSchema = mongoose.Schema({
-    name : {
+    fName : {
+        type : String,
+        required : true
+    },
+    lName : {
         type : String,
         required : true
     },

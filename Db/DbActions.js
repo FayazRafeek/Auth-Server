@@ -5,11 +5,15 @@ async function getUser(email) {
 
     let userModel = null;
     await Connection();
-    await User.findOne({email : email}, (err,user) => {
+    await User.find({email : email}, (err,users) => {
+        console.log(users);
         if(err)
             return
-        if(user)
-            userModel = user
+        if(users.length == 0)
+            userModel = null
+        else
+            userModel = users[0]
+
     })
 
     return userModel
